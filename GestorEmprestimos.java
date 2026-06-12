@@ -1,82 +1,69 @@
 public class GestorEmprestimos {
-
+    private NossoHash<String, Fila<Usuario>> filasDeEspera;
     private ListaDupla acervo;
-    private Fila<Usuario> filaEspera;
 
     public GestorEmprestimos(ListaDupla acervo) {
+        this.filasDeEspera = new NossoHash<>();
         this.acervo = acervo;
-        this.filaEspera = new Fila<>();
     }
 
     public void solicitarEmprestimo(String isbn, Usuario u) {
-
         Livro livro = acervo.buscarPorIsbn(isbn);
 
         if (livro == null) {
-            System.out.println("Livro não encontrado.");
+            System.out.println("Livro nao encontrado: " + isbn);
             return;
         }
 
         if (livro.isDisponivel()) {
             livro.setDisponivel(false);
-            System.out.println(u.getNome() +
-                    " realizou empréstimo do livro: "
-                    + livro.getTitulo());
-        }
-        else {
-            filaEspera.enfileira(u);
-
-            System.out.println(
-                    "Livro indisponível. Usuário adicionado à fila."
-            );
-        }
-    }
-
-    public void devolverLivro(String isbn) {
-
-        Livro livro = acervo.buscarPorIsbn(isbn);
-
-        if (livro == null) {
-            System.out.println("Livro não encontrado.");
+            System.out.println("Emprestimo realizado para " + u.getNome() + ": " + livro);
             return;
         }
 
-        livro.setDisponivel(true);
+        Fila<Usuario> fila = filasDeEspera.get(isbn);
+        if (fila == null) {
+            fila = new Fila<>();
+            filasDeEspera.put(isbn, fila);
+        }
 
-        System.out.println(
-                "Livro devolvido: " + livro.getTitulo()
-        );
+        fila.enfileira(u);
+        System.out.println("Livro indisponivel. Usuario adicionado na fila: " + u);
+    }
 
-        if (!filaEspera.filaVazia()) {
+    public void devolverLivro(String isbn) {
+        Livro livro = acervo.buscarPorIsbn(isbn);
 
+        if (livro == null) {
+            System.out.println("Livro nao encontrado: " + isbn);
+            return;
+        }
+
+        Fila<Usuario> fila = filasDeEspera.get(isbn);
+
+        if (fila != null && !fila.filaVazia()) {
             try {
-
-                Usuario proximo =
-                        filaEspera.desenfileira();
-
+                Usuario proximo = fila.desenfileira();
+                System.out.println("Livro devolvido: " + livro.getTitulo());
+                System.out.println("Emprestimo transferido automaticamente para: " + proximo);
                 livro.setDisponivel(false);
-
-                System.out.println(
-                        "Novo empréstimo para: "
-                                + proximo.getNome()
-                );
-
+            } catch (FilaVaziaException e) {
+                livro.setDisponivel(true);
             }
-            catch (Exception e) {
-                System.out.println(e.getMessage());
-            }
+        } else {
+            livro.setDisponivel(true);
+            System.out.println("Livro devolvido e agora esta disponivel: " + livro);
         }
     }
 
     public void listarFilaDeEspera(String isbn) {
+        Fila<Usuario> fila = filasDeEspera.get(isbn);
 
-        Livro livro = acervo.buscarPorIsbn(isbn);
-
-        if (livro == null) {
-            System.out.println("Livro não encontrado.");
+        if (fila == null || fila.filaVazia()) {
+            System.out.println("Nao ha fila de espera para o ISBN " + isbn);
             return;
         }
 
-        System.out.println(filaEspera);
+        System.out.println("Fila de espera do ISBN " + isbn + ": " + fila);
     }
 }
